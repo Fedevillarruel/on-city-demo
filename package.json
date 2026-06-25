@@ -3,7 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "/usr/local/bin/python3 -m streamlit run app.py",
-    "scheduler": "/usr/local/bin/python3 scheduler_service.py"
+    "start": "node server.js",
+    "dev": "python3 -m streamlit run app.py",
+    "scheduler": "python3 scheduler_service.py",
+    "postinstall": "python3 -m pip install -r requirements.txt || python -m pip install -r requirements.txt"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "http-proxy-middleware": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
