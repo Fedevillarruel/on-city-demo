@@ -1,5 +1,4 @@
 import io
-import json
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -7,7 +6,6 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from streamlit_elements import dashboard, elements, mui, sync
 
 from cron_store import (
     add_job,
@@ -21,7 +19,6 @@ from cron_store import (
 from intelligence_store import get_alerts, get_brand_scores, get_price_history, list_reports, process_post_run
 
 BASE_DIR = Path(__file__).resolve().parent
-LAYOUT_FILE = BASE_DIR / "dashboard_layout.json"
 
 pd.set_option("styler.render.max_elements", 4_000_000)
 
@@ -36,46 +33,118 @@ st.set_page_config(
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Sora:wght@500;700&display=swap');
+
+:root {
+    --ink-900: #0b1d2a;
+    --ink-700: #20384b;
+    --teal-600: #0a8b7a;
+    --teal-500: #15a795;
+    --sand-100: #f3efe7;
+    --paper: #ffffff;
+    --line: #d6e0e8;
+}
 
 html, body, [class*="css"] {
-    font-family: 'Barlow', sans-serif;
+    font-family: 'Manrope', sans-serif;
+    color: var(--ink-900);
 }
 
 .main {
-    background: radial-gradient(circle at 10% 10%, #fef5d9 0%, #f4fbf8 35%, #eef6ff 100%);
+    background:
+        radial-gradient(1200px 450px at 0% -5%, #d4e6df 0%, rgba(212, 230, 223, 0) 60%),
+        radial-gradient(900px 380px at 100% 0%, #efe4cc 0%, rgba(239, 228, 204, 0) 55%),
+        linear-gradient(180deg, #f8fbfc 0%, #f6f8f9 100%);
 }
 
 .block-container {
-    padding-top: 1rem;
-    padding-bottom: 2rem;
+    padding-top: 1.2rem;
+    padding-bottom: 2.2rem;
 }
 
 h1, h2, h3 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Sora', sans-serif;
+    letter-spacing: -0.015em;
 }
 
 .metric-card {
-    border-radius: 18px;
-    padding: 14px 16px;
-    background: linear-gradient(135deg, #0f172a, #1d4ed8);
-    color: #fff;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.22);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    background: linear-gradient(165deg, #0d2231 0%, #13405a 52%, #127f71 100%);
+    color: #f7fbfc;
+    box-shadow: 0 12px 30px rgba(10, 26, 38, 0.18);
 }
 
 .metric-label {
-    opacity: 0.85;
-    font-size: 0.85rem;
+    opacity: 0.88;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .metric-value {
-    font-size: 1.55rem;
+    margin-top: 4px;
+    font-size: 1.48rem;
+    font-weight: 800;
+}
+
+.status-panel {
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(17, 38, 58, 0.06);
+}
+
+.status-title {
+    font-family: 'Sora', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--ink-700);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dashed #e8eef2;
+    padding: 4px 0;
+    font-size: 0.93rem;
+}
+
+.status-row:last-child {
+    border-bottom: none;
+}
+
+.chip-ok {
+    color: #0f766e;
+    font-weight: 700;
+}
+
+.chip-empty {
+    color: #9a3412;
     font-weight: 700;
 }
 
 .widget-help {
     font-size: 0.85rem;
-    color: #334155;
+    color: var(--ink-700);
+}
+
+[data-testid="stTabs"] button[role="tab"] {
+    border-radius: 10px;
+    border: 1px solid transparent;
+    margin-right: 6px;
+}
+
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    background: #e4f5f1;
+    border-color: #c5e9df;
+    color: #0d5d53;
 }
 </style>
 """
@@ -473,32 +542,6 @@ def load_data() -> tuple[pd.DataFrame, dict]:
     return all_df, metadata
 
 
-def _save_layout(layout: list[dict]) -> None:
-    with open(LAYOUT_FILE, "w", encoding="utf-8") as fh:
-        json.dump(layout, fh)
-
-
-def _load_layout() -> list[dict]:
-    if not LAYOUT_FILE.exists():
-        return [
-            {"i": "kpi_products", "x": 0, "y": 0, "w": 3, "h": 2},
-            {"i": "kpi_ean", "x": 3, "y": 0, "w": 3, "h": 2},
-            {"i": "kpi_price", "x": 6, "y": 0, "w": 3, "h": 2},
-            {"i": "kpi_promo", "x": 9, "y": 0, "w": 3, "h": 2},
-            {"i": "kpi_stock", "x": 0, "y": 2, "w": 3, "h": 2},
-            {"i": "kpi_discount", "x": 3, "y": 2, "w": 3, "h": 2},
-            {"i": "kpi_sellers", "x": 6, "y": 2, "w": 3, "h": 2},
-            {"i": "kpi_price_median", "x": 9, "y": 2, "w": 3, "h": 2},
-            {"i": "chart_comp", "x": 0, "y": 4, "w": 6, "h": 4},
-            {"i": "chart_cat", "x": 6, "y": 4, "w": 6, "h": 4},
-            {"i": "chart_price_hist", "x": 0, "y": 8, "w": 6, "h": 4},
-            {"i": "chart_discount_comp", "x": 6, "y": 8, "w": 6, "h": 4},
-        ]
-
-    with open(LAYOUT_FILE, "r", encoding="utf-8") as fh:
-        return json.load(fh)
-
-
 def _metric_card(title: str, value: str) -> None:
     st.markdown(
         f"""
@@ -570,8 +613,8 @@ def _filter_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _render_dashboard(filtered_df: pd.DataFrame) -> None:
-    st.subheader("Dashboard moderno (widgets drag and drop)")
-    st.caption("Arrastra los widgets como en un celular. El layout se guarda automaticamente.")
+    st.subheader("Dashboard ejecutivo")
+    st.caption("Vista de performance comercial con módulos configurables y lectura rápida para toma de decisiones.")
 
     widget_catalog = {
         "kpi_products": "KPI Total productos",
@@ -592,7 +635,7 @@ def _render_dashboard(filtered_df: pd.DataFrame) -> None:
         st.session_state["active_widgets"] = list(widget_catalog.keys())
 
     active_widgets = st.multiselect(
-        "Widgets activos",
+        "Módulos visibles",
         options=list(widget_catalog.keys()),
         default=st.session_state["active_widgets"],
         format_func=lambda x: widget_catalog[x],
@@ -673,7 +716,7 @@ def _render_dashboard(filtered_df: pd.DataFrame) -> None:
         title="Distribución de precios",
     )
 
-    discount_comp_df = pd.DataFrame()
+    discount_comp_df = pd.DataFrame(columns=["competencia", "discount_pct_calc"])
     if not discount_series.empty:
         discount_comp_df = filtered_df[["competencia"]].copy()
         discount_comp_df["discount_pct_calc"] = discount_series
@@ -694,79 +737,50 @@ def _render_dashboard(filtered_df: pd.DataFrame) -> None:
         labels={"discount_pct_calc": "Descuento %"},
     )
 
-    if "dash_layout" not in st.session_state:
-        st.session_state["dash_layout"] = _load_layout()
+    kpi_values = {
+        "kpi_products": ("Total productos", f"{total_products:,}"),
+        "kpi_ean": ("Cobertura EAN", f"{ean_cov:.1f}%"),
+        "kpi_price": ("Precio promedio", f"${avg_price:,.0f}"),
+        "kpi_promo": ("Con cuotas sin interés", f"{promo_cov:.1f}%"),
+        "kpi_stock": ("Cobertura de stock", f"{stock_cov:.1f}%"),
+        "kpi_discount": ("Descuento promedio", f"{avg_discount:.1f}%"),
+        "kpi_sellers": ("Sellers únicos", f"{sellers_count:,}"),
+        "kpi_price_median": ("Precio mediano", f"${median_price:,.0f}"),
+    }
 
-    with elements("dashboard_widgets"):
-        with dashboard.Grid(
-            st.session_state["dash_layout"],
-            onLayoutChange=sync("dash_layout"),
-            cols={"lg": 12, "md": 10, "sm": 6, "xs": 4, "xxs": 2},
-            rowHeight=60,
-            draggableHandle=".drag-handle",
-        ):
-            if "kpi_products" in active_widgets:
-                with mui.Paper(key="kpi_products", sx={"p": 2}):
-                    mui.Typography("Total productos", className="drag-handle", sx={"fontWeight": 700})
-                    mui.Typography(f"{total_products:,}", variant="h4")
+    visible_kpis = [k for k in kpi_values if k in active_widgets]
+    for idx in range(0, len(visible_kpis), 4):
+        cols = st.columns(4)
+        for col, key in zip(cols, visible_kpis[idx:idx + 4]):
+            title, value = kpi_values[key]
+            with col:
+                _metric_card(title, value)
 
-            if "kpi_ean" in active_widgets:
-                with mui.Paper(key="kpi_ean", sx={"p": 2}):
-                    mui.Typography("Cobertura EAN", className="drag-handle", sx={"fontWeight": 700})
-                    mui.Typography(f"{ean_cov:.1f}%", variant="h4")
+    fig_comp.update_layout(margin=dict(l=8, r=8, t=44, b=8))
+    fig_cat.update_layout(margin=dict(l=8, r=8, t=44, b=8))
+    fig_price_hist.update_layout(margin=dict(l=8, r=8, t=44, b=8))
+    fig_discount_comp.update_layout(margin=dict(l=8, r=8, t=44, b=8))
 
-            if "kpi_price" in active_widgets:
-                with mui.Paper(key="kpi_price", sx={"p": 2}):
-                    mui.Typography("Precio promedio", className="drag-handle", sx={"fontWeight": 700})
-                    mui.Typography(f"${avg_price:,.0f}", variant="h4")
+    c1, c2 = st.columns(2)
+    with c1:
+        if "chart_comp" in active_widgets:
+            with st.container(border=True):
+                st.markdown("#### Productos por competidor")
+                st.plotly_chart(fig_comp, use_container_width=True, key="chart_comp_plot")
+        if "chart_price_hist" in active_widgets:
+            with st.container(border=True):
+                st.markdown("#### Distribución de precios")
+                st.plotly_chart(fig_price_hist, use_container_width=True, key="chart_price_hist_plot")
 
-            if "kpi_promo" in active_widgets:
-                with mui.Paper(key="kpi_promo", sx={"p": 2}):
-                    mui.Typography("Con cuotas sin interes", className="drag-handle", sx={"fontWeight": 700})
-                    mui.Typography(f"{promo_cov:.1f}%", variant="h4")
-
-            if "kpi_stock" in active_widgets:
-                with mui.Paper(key="kpi_stock", sx={"p": 2}):
-                    mui.Typography("Cobertura de stock", className="drag-handle", sx={"fontWeight": 700})
-                    mui.Typography(f"{stock_cov:.1f}%", variant="h4")
-
-            if "kpi_discount" in active_widgets:
-                with mui.Paper(key="kpi_discount", sx={"p": 2}):
-                    mui.Typography("Descuento promedio", className="drag-handle", sx={"fontWeight": 700})
-                    mui.Typography(f"{avg_discount:.1f}%", variant="h4")
-
-            if "kpi_sellers" in active_widgets:
-                with mui.Paper(key="kpi_sellers", sx={"p": 2}):
-                    mui.Typography("Sellers únicos", className="drag-handle", sx={"fontWeight": 700})
-                    mui.Typography(f"{sellers_count:,}", variant="h4")
-
-            if "kpi_price_median" in active_widgets:
-                with mui.Paper(key="kpi_price_median", sx={"p": 2}):
-                    mui.Typography("Precio mediano", className="drag-handle", sx={"fontWeight": 700})
-                    mui.Typography(f"${median_price:,.0f}", variant="h4")
-
-            if "chart_comp" in active_widgets:
-                with mui.Paper(key="chart_comp", sx={"p": 1}):
-                    mui.Typography("Productos por competidor", className="drag-handle", sx={"fontWeight": 700})
-                    st.plotly_chart(fig_comp, use_container_width=True, key="chart_comp_plot")
-
-            if "chart_cat" in active_widgets:
-                with mui.Paper(key="chart_cat", sx={"p": 1}):
-                    mui.Typography("Mix por categoria", className="drag-handle", sx={"fontWeight": 700})
-                    st.plotly_chart(fig_cat, use_container_width=True, key="chart_cat_plot")
-
-            if "chart_price_hist" in active_widgets:
-                with mui.Paper(key="chart_price_hist", sx={"p": 1}):
-                    mui.Typography("Distribución de precios", className="drag-handle", sx={"fontWeight": 700})
-                    st.plotly_chart(fig_price_hist, use_container_width=True, key="chart_price_hist_plot")
-
-            if "chart_discount_comp" in active_widgets:
-                with mui.Paper(key="chart_discount_comp", sx={"p": 1}):
-                    mui.Typography("Descuento por competidor", className="drag-handle", sx={"fontWeight": 700})
-                    st.plotly_chart(fig_discount_comp, use_container_width=True, key="chart_discount_comp_plot")
-
-    if st.session_state.get("dash_layout"):
-        _save_layout(st.session_state["dash_layout"])
+    with c2:
+        if "chart_cat" in active_widgets:
+            with st.container(border=True):
+                st.markdown("#### Mix por categoría")
+                st.plotly_chart(fig_cat, use_container_width=True, key="chart_cat_plot")
+        if "chart_discount_comp" in active_widgets:
+            with st.container(border=True):
+                st.markdown("#### Descuento por competidor")
+                st.plotly_chart(fig_discount_comp, use_container_width=True, key="chart_discount_comp_plot")
 
     st.markdown("<div class='widget-help'>Tip: tambien puedes filtrar arriba y el dashboard se recalcula en vivo.</div>", unsafe_allow_html=True)
 
@@ -1298,40 +1312,40 @@ def _render_intelligence_tab(filtered_df: pd.DataFrame) -> None:
                 )
 
 
-def _show_demo_modal() -> None:
-    """Muestra modal de bienvenida indicando que es un demo personalizable."""
-    if "demo_modal_shown" not in st.session_state:
-        st.session_state.demo_modal_shown = False
+@st.dialog("Demo by Fedini", width="large")
+def _render_demo_dialog() -> None:
+    st.markdown(
+        """
+        ### Centro de Inteligencia de Precios
+        Este demo está diseñado para mostrar capacidades reales de analítica competitiva.
 
-    if not st.session_state.demo_modal_shown:
-        with st.container(border=True):
-            col1, col2 = st.columns([0.9, 0.1])
-            
-            with col1:
-                st.markdown("""
-                ### 🎨 Demo by **Fedini**
-                
-                Este es un **demo completamente personalizable** del Centro de Inteligencia de Precios.
-                
-                **Todo puede ser adaptado:**
-                - 🎨 Colores y temas visuales
-                - 📊 Métricas y KPIs
-                - 📝 Textos e idiomas
-                - 🔧 Integraciones y fuentes de datos
-                - 📱 Layout y diseño de la interfaz
-                
-                Contáctanos para conocer cómo podemos adaptarlo a las necesidades específicas de tu marca.
-                """)
-                
-                st.markdown(
-                    "**[→ Visita fedini.app](https://fedini.app)**",
-                    unsafe_allow_html=True
-                )
-            
-            with col2:
-                if st.button("✕", key="close_demo_modal", help="Cerrar"):
-                    st.session_state.demo_modal_shown = True
-                    st.rerun()
+        **Cada implementación se adapta 100% a la marca:**
+        - Identidad visual, tipografías y paleta corporativa.
+        - Métricas, KPI y vistas ejecutivas específicas del negocio.
+        - Textos, tono comunicacional y narrativa comercial.
+        - Integraciones con ERP, BI, CRM o fuentes internas.
+        - Flujos operativos y permisos por rol de usuario.
+        """
+    )
+
+    left, right = st.columns([1, 1])
+    with left:
+        st.link_button("Ver más en fedini.app", "https://fedini.app", use_container_width=True)
+    with right:
+        if st.button("Entrar al demo", use_container_width=True, type="primary"):
+            st.session_state["demo_modal_open"] = False
+            st.session_state["demo_modal_seen"] = True
+            st.rerun()
+
+
+def _show_demo_modal() -> None:
+    if "demo_modal_open" not in st.session_state:
+        st.session_state["demo_modal_open"] = True
+    if "demo_modal_seen" not in st.session_state:
+        st.session_state["demo_modal_seen"] = False
+
+    if st.session_state["demo_modal_open"] and not st.session_state["demo_modal_seen"]:
+        _render_demo_dialog()
 
 
 def main() -> None:
@@ -1349,15 +1363,21 @@ def main() -> None:
         _metric_card("Actualizado", metadata["updated_at"])
     with right:
         def _src_status(fname: str) -> str:
-            return f"✅ {fname}" if fname != "No encontrado" else "⚠️ Sin datos aún"
+            if fname != "No encontrado":
+                return f"<span class='chip-ok'>Disponible</span> · {fname}"
+            return "<span class='chip-empty'>Sin datos</span>"
 
         st.markdown(
             f"""
-            **Última actualización de datos**  
-            OnCity: {_src_status(metadata['oncity_file'])}  
-            Fravega: {_src_status(metadata['fravega_file'])}  
-            Cetrogar: {_src_status(metadata['cetrogar_file'])}
+            <div class='status-panel'>
+                <div class='status-title'>Estado de fuentes</div>
+                <div class='status-row'><span>OnCity</span><span>{_src_status(metadata['oncity_file'])}</span></div>
+                <div class='status-row'><span>Fravega</span><span>{_src_status(metadata['fravega_file'])}</span></div>
+                <div class='status-row'><span>Cetrogar</span><span>{_src_status(metadata['cetrogar_file'])}</span></div>
+            </div>
             """
+            ,
+            unsafe_allow_html=True,
         )
     with refresh_col:
         st.markdown("&nbsp;", unsafe_allow_html=True)
