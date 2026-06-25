@@ -1298,8 +1298,46 @@ def _render_intelligence_tab(filtered_df: pd.DataFrame) -> None:
                 )
 
 
+def _show_demo_modal() -> None:
+    """Muestra modal de bienvenida indicando que es un demo personalizable."""
+    if "demo_modal_shown" not in st.session_state:
+        st.session_state.demo_modal_shown = False
+
+    if not st.session_state.demo_modal_shown:
+        with st.container(border=True):
+            col1, col2 = st.columns([0.9, 0.1])
+            
+            with col1:
+                st.markdown("""
+                ### 🎨 Demo by **Fedini**
+                
+                Este es un **demo completamente personalizable** del Centro de Inteligencia de Precios.
+                
+                **Todo puede ser adaptado:**
+                - 🎨 Colores y temas visuales
+                - 📊 Métricas y KPIs
+                - 📝 Textos e idiomas
+                - 🔧 Integraciones y fuentes de datos
+                - 📱 Layout y diseño de la interfaz
+                
+                Contáctanos para conocer cómo podemos adaptarlo a las necesidades específicas de tu marca.
+                """)
+                
+                st.markdown(
+                    "**[→ Visita fedini.app](https://fedini.app)**",
+                    unsafe_allow_html=True
+                )
+            
+            with col2:
+                if st.button("✕", key="close_demo_modal", help="Cerrar"):
+                    st.session_state.demo_modal_shown = True
+                    st.rerun()
+
+
 def main() -> None:
     _start_scheduler_thread()  # inicia hilo de scheduler en segundo plano (una sola vez)
+    
+    _show_demo_modal()
 
     st.title("Centro de Inteligencia de Precios")
     st.caption("Panel visual para OnCity, Fravega y Cetrogar con filtros, indicadores, reportes y horarios automáticos")
