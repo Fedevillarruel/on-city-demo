@@ -830,6 +830,8 @@ def _render_dashboard(filtered_df: pd.DataFrame) -> None:
     )
     st.session_state["active_widgets"] = active_widgets
 
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+
     total_products = int(filtered_df["product_id"].nunique()) if "product_id" in filtered_df.columns else len(filtered_df)
     ean_cov = 0.0
     if len(filtered_df):
@@ -938,39 +940,44 @@ def _render_dashboard(filtered_df: pd.DataFrame) -> None:
 
     visible_kpis = [k for k in kpi_values if k in active_widgets]
     for idx in range(0, len(visible_kpis), 4):
-        cols = st.columns(4)
+        cols = st.columns(4, gap="medium")
         for col, key in zip(cols, visible_kpis[idx:idx + 4]):
             title, value = kpi_values[key]
             with col:
                 _metric_card(title, value)
+        st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-    fig_comp.update_layout(margin=dict(l=8, r=8, t=44, b=8))
-    fig_cat.update_layout(margin=dict(l=8, r=8, t=44, b=8))
-    fig_price_hist.update_layout(margin=dict(l=8, r=8, t=44, b=8))
-    fig_discount_comp.update_layout(margin=dict(l=8, r=8, t=44, b=8))
+    fig_comp.update_layout(margin=dict(l=8, r=8, t=44, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig_cat.update_layout(margin=dict(l=8, r=8, t=44, b=8), paper_bgcolor="rgba(0,0,0,0)")
+    fig_price_hist.update_layout(margin=dict(l=8, r=8, t=44, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig_discount_comp.update_layout(margin=dict(l=8, r=8, t=44, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
 
-    c1, c2 = st.columns(2)
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2, gap="medium")
     with c1:
         if "chart_comp" in active_widgets:
             with st.container(border=True):
-                st.markdown("#### Productos por competidor")
+                st.markdown("<div class='section-label'>Productos por competidor</div>", unsafe_allow_html=True)
                 st.plotly_chart(fig_comp, use_container_width=True, key="chart_comp_plot")
         if "chart_price_hist" in active_widgets:
+            st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
             with st.container(border=True):
-                st.markdown("#### Distribución de precios")
+                st.markdown("<div class='section-label'>Distribución de precios</div>", unsafe_allow_html=True)
                 st.plotly_chart(fig_price_hist, use_container_width=True, key="chart_price_hist_plot")
 
     with c2:
         if "chart_cat" in active_widgets:
             with st.container(border=True):
-                st.markdown("#### Mix por categoría")
+                st.markdown("<div class='section-label'>Mix por categoría</div>", unsafe_allow_html=True)
                 st.plotly_chart(fig_cat, use_container_width=True, key="chart_cat_plot")
         if "chart_discount_comp" in active_widgets:
+            st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
             with st.container(border=True):
-                st.markdown("#### Descuento por competidor")
+                st.markdown("<div class='section-label'>Descuento por competidor</div>", unsafe_allow_html=True)
                 st.plotly_chart(fig_discount_comp, use_container_width=True, key="chart_discount_comp_plot")
 
-    st.markdown("<div class='widget-help'>Tip: tambien puedes filtrar arriba y el dashboard se recalcula en vivo.</div>", unsafe_allow_html=True)
+    st.markdown("<div class='widget-help'>Filtrá desde el panel izquierdo y el dashboard se recalcula en vivo.</div>", unsafe_allow_html=True)
 
 
 def _render_table_and_exports(filtered_df: pd.DataFrame) -> None:
@@ -1653,7 +1660,9 @@ def main() -> None:
 
     all_df, metadata = load_data()
 
-    left, right, refresh_col = st.columns([2, 3, 1])
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+
+    left, right, refresh_col = st.columns([2, 3, 1], gap="medium")
     with left:
         _metric_card("Última actualización", metadata["updated_at"])
     with right:
@@ -1685,6 +1694,8 @@ def main() -> None:
         return
 
     filtered_df = _filter_data(all_df)
+
+    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Panel", "Productos", "Comparativa", "Top", "Horarios", "Inteligencia"])
 
