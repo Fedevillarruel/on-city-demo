@@ -1,0 +1,9 @@
+{
+  "name": "script-precios-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "/usr/local/bin/python3 -m streamlit run app.py",
+    "scheduler": "/usr/local/bin/python3 scheduler_service.py"
+  }
+}
