@@ -33,118 +33,311 @@ st.set_page_config(
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Sora:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
 
 :root {
-    --ink-900: #0b1d2a;
-    --ink-700: #20384b;
-    --teal-600: #0a8b7a;
-    --teal-500: #15a795;
-    --sand-100: #f3efe7;
-    --paper: #ffffff;
-    --line: #d6e0e8;
+    --brand-dark:   #0a1628;
+    --brand-mid:    #0f2d4a;
+    --brand-teal:   #0d9488;
+    --brand-light:  #f0fdfa;
+    --accent:       #14b8a6;
+    --accent-warm:  #f59e0b;
+    --surface:      #ffffff;
+    --surface-2:    #f8fafc;
+    --border:       #e2e8f0;
+    --border-subtle:#f1f5f9;
+    --text-primary: #0f172a;
+    --text-muted:   #64748b;
+    --success:      #059669;
+    --danger:       #dc2626;
+    --radius-lg:    18px;
+    --radius-md:    12px;
+    --radius-sm:    8px;
+    --shadow-sm:    0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md:    0 4px 16px rgba(15,23,42,0.08), 0 2px 6px rgba(15,23,42,0.04);
+    --shadow-lg:    0 12px 40px rgba(10,22,40,0.14), 0 4px 12px rgba(10,22,40,0.06);
 }
 
+*, *::before, *::after { box-sizing: border-box; }
+
 html, body, [class*="css"] {
-    font-family: 'Manrope', sans-serif;
-    color: var(--ink-900);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
 }
 
 .main {
-    background:
-        radial-gradient(1200px 450px at 0% -5%, #d4e6df 0%, rgba(212, 230, 223, 0) 60%),
-        radial-gradient(900px 380px at 100% 0%, #efe4cc 0%, rgba(239, 228, 204, 0) 55%),
-        linear-gradient(180deg, #f8fbfc 0%, #f6f8f9 100%);
+    background: #f6f9fc;
+    background-image:
+        radial-gradient(ellipse 900px 500px at -5% 0%, rgba(20,184,166,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 700px 400px at 105% 0%, rgba(245,158,11,0.07) 0%, transparent 55%);
+    min-height: 100vh;
 }
 
 .block-container {
-    padding-top: 1.2rem;
-    padding-bottom: 2.2rem;
+    padding-top: 1.5rem !important;
+    padding-bottom: 3rem !important;
+    max-width: 1400px;
 }
 
-h1, h2, h3 {
-    font-family: 'Sora', sans-serif;
-    letter-spacing: -0.015em;
+h1 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--brand-dark);
+    line-height: 1.15;
 }
 
-.metric-card {
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--line);
-    background: linear-gradient(165deg, #0d2231 0%, #13405a 52%, #127f71 100%);
-    color: #f7fbfc;
-    box-shadow: 0 12px 30px rgba(10, 26, 38, 0.18);
+h2, h3 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
 }
 
-.metric-label {
-    opacity: 0.88;
+/* ─── APP HEADER ─────────────────────────────────────── */
+.app-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 0 4px 0;
+    margin-bottom: 4px;
+}
+
+.app-logo {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--brand-mid) 0%, var(--brand-teal) 100%);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    box-shadow: var(--shadow-md);
+    flex-shrink: 0;
+}
+
+.app-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--brand-dark);
+    line-height: 1.1;
+    margin: 0;
+}
+
+.app-subtitle {
     font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 2px 0 0 0;
+    font-weight: 500;
+}
+
+/* ─── KPI CARDS ─────────────────────────────────────── */
+.kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand-teal), var(--accent-warm));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.kpi-label {
+    font-size: 0.73rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
 }
 
-.metric-value {
-    margin-top: 4px;
-    font-size: 1.48rem;
+.kpi-value {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.75rem;
     font-weight: 800;
+    color: var(--brand-dark);
+    line-height: 1;
+    letter-spacing: -0.02em;
 }
 
+/* ─── STATUS PANEL ───────────────────────────────────── */
 .status-panel {
-    border-radius: 14px;
-    padding: 14px 16px;
-    background: var(--paper);
-    border: 1px solid var(--line);
-    box-shadow: 0 6px 20px rgba(17, 38, 58, 0.06);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    box-shadow: var(--shadow-sm);
 }
 
 .status-title {
-    font-family: 'Sora', sans-serif;
-    font-size: 0.88rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    color: var(--ink-700);
-    margin-bottom: 8px;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
 }
 
 .status-row {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    border-bottom: 1px dashed #e8eef2;
-    padding: 4px 0;
-    font-size: 0.93rem;
+    padding: 5px 0;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
-.status-row:last-child {
-    border-bottom: none;
+.status-row:last-child { border-bottom: none; }
+
+.status-source {
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 .chip-ok {
-    color: #0f766e;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #ecfdf5;
+    color: var(--success);
+    font-size: 0.76rem;
     font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 20px;
+    border: 1px solid #a7f3d0;
 }
 
 .chip-empty {
-    color: #9a3412;
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #fef2f2;
+    color: var(--danger);
+    font-size: 0.76rem;
     font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 20px;
+    border: 1px solid #fecaca;
 }
 
-.widget-help {
-    font-size: 0.85rem;
-    color: var(--ink-700);
+/* ─── METRIC CARD (legacy, kept for compat) ──────────── */
+.metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    position: relative; overflow: hidden;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand-teal), var(--accent));
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.metric-label {
+    font-size: 0.73rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.metric-value {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: var(--brand-dark);
+    letter-spacing: -0.02em;
+    margin-top: 4px;
+}
+
+/* ─── TABS ───────────────────────────────────────────── */
+[data-testid="stTabs"] { margin-top: 0.5rem; }
+
+[data-testid="stTabs"] [data-testid="stTabsTabList"] {
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    gap: 2px;
+    border: 1px solid var(--border);
+    display: inline-flex;
 }
 
 [data-testid="stTabs"] button[role="tab"] {
-    border-radius: 10px;
-    border: 1px solid transparent;
-    margin-right: 6px;
+    border-radius: var(--radius-sm) !important;
+    padding: 6px 16px !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    border: none !important;
+    transition: all 0.15s ease;
+}
+
+[data-testid="stTabs"] button[role="tab"]:hover {
+    color: var(--brand-teal) !important;
+    background: rgba(13,148,136,0.06) !important;
 }
 
 [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    background: #e4f5f1;
-    border-color: #c5e9df;
-    color: #0d5d53;
+    background: var(--surface) !important;
+    color: var(--brand-dark) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* ─── SIDEBAR ────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background: var(--surface) !important;
+    border-right: 1px solid var(--border) !important;
+}
+
+[data-testid="stSidebar"] [data-testid="stSidebarHeader"] {
+    padding-bottom: 0;
+}
+
+[data-testid="stSidebar"] h2 {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+/* ─── MISC ───────────────────────────────────────────── */
+.widget-help {
+    font-size: 0.83rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+[data-testid="stDataFrame"] {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+/* ─── DIALOG / MODAL ─────────────────────────────────── */
+[data-testid="stDialog"] {
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    box-shadow: 0 24px 64px rgba(10,20,40,0.22) !important;
+}
+
+[data-testid="stDialog"] > div:first-child {
+    padding: 0 !important;
 }
 </style>
 """
@@ -544,12 +737,7 @@ def load_data() -> tuple[pd.DataFrame, dict]:
 
 def _metric_card(title: str, value: str) -> None:
     st.markdown(
-        f"""
-        <div class='metric-card'>
-            <div class='metric-label'>{title}</div>
-            <div class='metric-value'>{value}</div>
-        </div>
-        """,
+        f"<div class='kpi-card'><div class='kpi-label'>{title}</div><div class='kpi-value'>{value}</div></div>",
         unsafe_allow_html=True,
     )
 
@@ -1312,27 +1500,124 @@ def _render_intelligence_tab(filtered_df: pd.DataFrame) -> None:
                 )
 
 
-@st.dialog("Demo by Fedini", width="large")
+@st.dialog(" ", width="large")
 def _render_demo_dialog() -> None:
     st.markdown(
         """
-        ### Centro de Inteligencia de Precios
-        Este demo está diseñado para mostrar capacidades reales de analítica competitiva.
-
-        **Cada implementación se adapta 100% a la marca:**
-        - Identidad visual, tipografías y paleta corporativa.
-        - Métricas, KPI y vistas ejecutivas específicas del negocio.
-        - Textos, tono comunicacional y narrativa comercial.
-        - Integraciones con ERP, BI, CRM o fuentes internas.
-        - Flujos operativos y permisos por rol de usuario.
-        """
+        <div style="
+            background: linear-gradient(150deg, #0a1628 0%, #0f2d4a 55%, #0d4f45 100%);
+            border-radius: 18px 18px 0 0;
+            padding: 36px 40px 32px;
+            margin: -1.5rem -1.5rem 0;
+            position: relative;
+            overflow: hidden;
+        ">
+            <div style="
+                position: absolute; top: -60px; right: -60px;
+                width: 220px; height: 220px;
+                background: radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 70%);
+                border-radius: 50%;
+            "></div>
+            <div style="
+                display: inline-flex; align-items: center; gap: 8px;
+                background: rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.14);
+                border-radius: 30px;
+                padding: 4px 14px 4px 8px;
+                margin-bottom: 20px;
+            ">
+                <span style="font-size:12px;">✦</span>
+                <span style="font-size:0.75rem; font-weight:700; color:rgba(255,255,255,0.85); letter-spacing:0.08em; text-transform:uppercase;">Demo Product</span>
+            </div>
+            <div style="
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                font-size: 1.85rem;
+                font-weight: 800;
+                color: #ffffff;
+                letter-spacing: -0.03em;
+                line-height: 1.15;
+                margin-bottom: 10px;
+            ">Centro de Inteligencia<br>de Precios</div>
+            <div style="
+                font-size: 0.92rem;
+                color: rgba(255,255,255,0.65);
+                line-height: 1.6;
+                max-width: 480px;
+            ">Monitoreo competitivo en tiempo real para tomar mejores decisiones comerciales.</div>
+            <div style="
+                margin-top: 24px;
+                display: flex; gap: 24px; flex-wrap: wrap;
+            ">
+                <div style="text-align:center;">
+                    <div style="font-size:1.4rem;font-weight:800;color:#5eead4;">3</div>
+                    <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">Retailers</div>
+                </div>
+                <div style="width:1px;background:rgba(255,255,255,0.1);align-self:stretch;"></div>
+                <div style="text-align:center;">
+                    <div style="font-size:1.4rem;font-weight:800;color:#5eead4;">100%</div>
+                    <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">Personalizable</div>
+                </div>
+                <div style="width:1px;background:rgba(255,255,255,0.1);align-self:stretch;"></div>
+                <div style="text-align:center;">
+                    <div style="font-size:1.4rem;font-weight:800;color:#5eead4;">Auto</div>
+                    <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">Actualización</div>
+                </div>
+            </div>
+        </div>
+        <div style="padding: 28px 40px 8px;">
+            <div style="
+                font-size: 0.78rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: #64748b;
+                margin-bottom: 14px;
+            ">Cada implementación se adapta a tu marca</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        """,
+        unsafe_allow_html=True,
     )
+
+    features = [
+        ("🎨", "Identidad visual completa", "Colores, tipografías y paleta corporativa"),
+        ("📊", "KPIs a medida", "Métricas y vistas ejecutivas del negocio"),
+        ("🔗", "Integraciones", "ERP, BI, CRM o fuentes internas"),
+        ("👥", "Roles y permisos", "Flujos operativos por usuario"),
+    ]
+
+    for icon, title, desc in features:
+        st.markdown(
+            f"""
+            <div style="
+                background:#f8fafc;
+                border:1px solid #e2e8f0;
+                border-radius:12px;
+                padding:12px 14px;
+                display:flex; gap:12px; align-items:flex-start;
+            ">
+                <span style="font-size:18px;line-height:1;margin-top:2px;">{icon}</span>
+                <div>
+                    <div style="font-size:0.83rem;font-weight:700;color:#0f172a;margin-bottom:2px;">{title}</div>
+                    <div style="font-size:0.78rem;color:#64748b;line-height:1.4;">{desc}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     left, right = st.columns([1, 1])
     with left:
-        st.link_button("Ver más en fedini.app", "https://fedini.app", use_container_width=True)
+        st.link_button(
+            "→  Ver más en fedini.app",
+            "https://fedini.app",
+            use_container_width=True,
+        )
     with right:
-        if st.button("Entrar al demo", use_container_width=True, type="primary"):
+        if st.button("Explorar el demo  →", use_container_width=True, type="primary"):
             st.session_state["demo_modal_open"] = False
             st.session_state["demo_modal_seen"] = True
             st.rerun()
@@ -1353,35 +1638,44 @@ def main() -> None:
     
     _show_demo_modal()
 
-    st.title("Centro de Inteligencia de Precios")
-    st.caption("Panel visual para OnCity, Fravega y Cetrogar con filtros, indicadores, reportes y horarios automáticos")
+    st.markdown(
+        f"""
+        <div class='app-header'>
+            <div class='app-logo'>📊</div>
+            <div>
+                <div class='app-title'>Centro de Inteligencia de Precios</div>
+                <div class='app-subtitle'>Monitoreo y comparativa competitiva · OnCity · Fravega · Cetrogar</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     all_df, metadata = load_data()
 
     left, right, refresh_col = st.columns([2, 3, 1])
     with left:
-        _metric_card("Actualizado", metadata["updated_at"])
+        _metric_card("Última actualización", metadata["updated_at"])
     with right:
         def _src_status(fname: str) -> str:
             if fname != "No encontrado":
-                return f"<span class='chip-ok'>Disponible</span> · {fname}"
-            return "<span class='chip-empty'>Sin datos</span>"
+                return "<span class='chip-ok'>● Activo</span>"
+            return "<span class='chip-empty'>● Sin datos</span>"
 
         st.markdown(
             f"""
             <div class='status-panel'>
-                <div class='status-title'>Estado de fuentes</div>
-                <div class='status-row'><span>OnCity</span><span>{_src_status(metadata['oncity_file'])}</span></div>
-                <div class='status-row'><span>Fravega</span><span>{_src_status(metadata['fravega_file'])}</span></div>
-                <div class='status-row'><span>Cetrogar</span><span>{_src_status(metadata['cetrogar_file'])}</span></div>
+                <div class='status-title'>Estado de fuentes de datos</div>
+                <div class='status-row'><span class='status-source'>OnCity</span><span>{_src_status(metadata['oncity_file'])}</span></div>
+                <div class='status-row'><span class='status-source'>Fravega</span><span>{_src_status(metadata['fravega_file'])}</span></div>
+                <div class='status-row'><span class='status-source'>Cetrogar</span><span>{_src_status(metadata['cetrogar_file'])}</span></div>
             </div>
-            """
-            ,
+            """,
             unsafe_allow_html=True,
         )
     with refresh_col:
-        st.markdown("&nbsp;", unsafe_allow_html=True)
-        if st.button("🔄 Actualizar datos", use_container_width=True, help="Fuerza la recarga de los archivos más recientes"):
+        st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
+        if st.button("↻  Actualizar datos", use_container_width=True, help="Fuerza la recarga de los archivos más recientes"):
             st.cache_data.clear()
             st.rerun()
 
@@ -1412,10 +1706,27 @@ def main() -> None:
     with tab6:
         _render_intelligence_tab(filtered_df)
 
-    st.markdown("---")
-    st.caption(
-        "Nota stock/ventas: actualmente los sitios públicos exponen disponibilidad, pero no ventas por período de forma abierta. "
-        "Si luego tienes API privada/ERP, se puede integrar esta capa sin cambiar la UX."
+    st.markdown(
+        """
+        <div style='
+            margin-top: 40px;
+            padding: 16px 22px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+        '>
+            <span style='font-size:1.1rem;margin-top:1px;'>💡</span>
+            <div style='font-size:0.83rem;color:#475569;line-height:1.6;'>
+                <strong style='color:#0f172a;'>Nota sobre stock y ventas:</strong>
+                actualmente los sitios públicos exponen disponibilidad, pero no ventas por período.
+                Si contás con una API privada o ERP, se puede integrar esta capa sin cambiar la UX.
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 
