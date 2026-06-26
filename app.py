@@ -530,6 +530,9 @@ def _filter_data(df: pd.DataFrame) -> pd.DataFrame:
 
     only_with_ean = st.sidebar.checkbox("Solo productos con EAN", value=False)
 
+    estado_options = ["Todos", "Solo activos", "Solo inactivos"]
+    selected_estado = st.sidebar.radio("Estado del producto", estado_options, index=0, horizontal=True)
+
     price_min = float(df["price"].min()) if df["price"].notna().any() else 0.0
     price_max = float(df["price"].max()) if df["price"].notna().any() else 0.0
     selected_price = st.sidebar.slider(
@@ -556,6 +559,13 @@ def _filter_data(df: pd.DataFrame) -> pd.DataFrame:
 
     if only_with_ean:
         f = f[f["ean"].str.strip() != ""]
+
+    if selected_estado != "Todos" and "available" in f.columns:
+        activo_mask = f["available"].fillna(False).astype(bool)
+        if selected_estado == "Solo activos":
+            f = f[activo_mask]
+        else:
+            f = f[~activo_mask]
 
     if query:
         q = query.lower().strip()
