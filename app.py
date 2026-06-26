@@ -1,4 +1,5 @@
 import io
+import json
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -6,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from streamlit_elements import dashboard, elements, mui, sync
 
 from cron_store import (
     add_job,
@@ -19,6 +21,7 @@ from cron_store import (
 from intelligence_store import get_alerts, get_brand_scores, get_price_history, list_reports, process_post_run
 
 BASE_DIR = Path(__file__).resolve().parent
+LAYOUT_FILE = BASE_DIR / "dashboard_layout.json"
 
 pd.set_option("styler.render.max_elements", 4_000_000)
 
@@ -33,394 +36,46 @@ st.set_page_config(
 
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap');
 
-/* ═══════════════════════════════════════════
-   TOKENS
-   ═══════════════════════════════════════════ */
-:root {
-    --brand-dark:    #0a1f3d;
-    --brand-mid:     #0f3460;
-    --brand-teal:    #0d9488;
-    --accent:        #14b8a6;
-    --accent-warm:   #d97706;
-    --surface:       #ffffff;
-    --surface-2:     #f1f5f9;
-    --bg-page:       #eef2f7;
-    --border:        #c8d5e3;
-    --border-subtle: #e2e8f0;
-    --text-primary:  #0f172a;
-    --text-body:     #1e293b;
-    --text-muted:    #475569;
-    --text-faint:    #94a3b8;
-    --success-bg:    #dcfce7;
-    --success-text:  #166534;
-    --success-border:#86efac;
-    --danger-bg:     #fee2e2;
-    --danger-text:   #991b1b;
-    --danger-border: #fca5a5;
-    --radius-xl:     20px;
-    --radius-lg:     16px;
-    --radius-md:     11px;
-    --radius-sm:     7px;
-    --shadow-xs:     0 1px 2px rgba(15,23,42,0.06);
-    --shadow-sm:     0 2px 8px rgba(15,23,42,0.09), 0 1px 3px rgba(15,23,42,0.05);
-    --shadow-md:     0 6px 20px rgba(15,23,42,0.11), 0 2px 8px rgba(15,23,42,0.06);
+html, body, [class*="css"] {
+    font-family: 'Barlow', sans-serif;
 }
 
-/* ═══════════════════════════════════════════
-   RESET AGRESIVO – vence al dark mode
-   ═══════════════════════════════════════════ */
-*, *::before, *::after { box-sizing: border-box; }
-
-html, body {
-    background-color: var(--bg-page) !important;
-    color: var(--text-primary) !important;
-}
-
-[class*="css"], [class^="st-"], [class*=" st-"] {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-    -webkit-font-smoothing: antialiased;
-}
-
-[data-testid="stAppViewContainer"],
-[data-testid="stAppViewBlockContainer"],
-[data-testid="block-container"] {
-    background-color: var(--bg-page) !important;
-    color: var(--text-primary) !important;
-}
-
-.main, .stApp {
-    background-color: var(--bg-page) !important;
-    background-image:
-        radial-gradient(ellipse 1100px 600px at -10% 0%,
-            rgba(13,148,136,0.07) 0%, transparent 65%),
-        radial-gradient(ellipse 800px 500px at 110% 0%,
-            rgba(217,119,6,0.05) 0%, transparent 60%);
+.main {
+    background: radial-gradient(circle at 10% 10%, #fef5d9 0%, #f4fbf8 35%, #eef6ff 100%);
 }
 
 .block-container {
-    padding-top: 1.5rem !important;
-    padding-bottom: 3rem !important;
-    max-width: 1440px !important;
+    padding-top: 1rem;
+    padding-bottom: 2rem;
 }
 
-/* Sólo los contenedores de texto nativos de Streamlit, NO bare div/span
-   para no aplastar colores inline de HTML personalizado */
-[data-testid="stMarkdownContainer"] > p,
-[data-testid="stMarkdownContainer"] > ul,
-[data-testid="stMarkdownContainer"] > ol,
-[data-testid="stText"],
-[data-testid="stCaptionContainer"] {
-    color: var(--text-body) !important;
+h1, h2, h3 {
+    font-family: 'Space Grotesk', sans-serif;
 }
 
-label {
-    color: var(--text-body) !important;
+.metric-card {
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, #0f172a, #1d4ed8);
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.22);
 }
 
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    letter-spacing: -0.02em;
-    color: var(--brand-dark) !important;
+.metric-label {
+    opacity: 0.85;
+    font-size: 0.85rem;
 }
 
-/* ═══════════════════════════════════════════
-   APP HEADER
-   ═══════════════════════════════════════════ */
-.app-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 20px;
-}
-
-.app-logo {
-    width: 44px; height: 44px;
-    background: linear-gradient(140deg, #0f3460 0%, #0d9488 100%);
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 21px;
-    box-shadow: var(--shadow-md);
-    flex-shrink: 0;
-}
-
-.app-title {
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    font-size: 1.55rem !important;
-    font-weight: 800 !important;
-    letter-spacing: -0.03em !important;
-    color: var(--brand-dark) !important;
-    line-height: 1.1;
-    margin: 0;
-}
-
-.app-subtitle {
-    font-size: 0.83rem !important;
-    color: var(--text-muted) !important;
-    margin: 3px 0 0 !important;
-    font-weight: 500 !important;
-}
-
-/* ═══════════════════════════════════════════
-   KPI / METRIC CARDS
-   ═══════════════════════════════════════════ */
-.kpi-card {
-    background: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius-lg) !important;
-    padding: 18px 20px !important;
-    box-shadow: var(--shadow-sm) !important;
-    position: relative;
-    overflow: hidden;
-}
-
-.kpi-card::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--brand-teal), var(--accent-warm));
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-}
-
-.kpi-label {
-    font-size: 0.72rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.08em !important;
-    color: var(--text-muted) !important;
-    margin-bottom: 8px;
-}
-
-.kpi-value {
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
-    font-size: 1.72rem !important;
-    font-weight: 800 !important;
-    color: var(--brand-dark) !important;
-    line-height: 1.1 !important;
-    letter-spacing: -0.025em !important;
-}
-
-/* ═══════════════════════════════════════════
-   STATUS PANEL
-   ═══════════════════════════════════════════ */
-.status-panel {
-    background: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius-md) !important;
-    padding: 14px 18px !important;
-    box-shadow: var(--shadow-xs) !important;
-}
-
-.status-title {
-    font-size: 0.69rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.09em !important;
-    color: var(--text-muted) !important;
-    margin-bottom: 10px;
-}
-
-.status-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 0;
-    font-size: 0.86rem !important;
-    border-bottom: 1px solid var(--border-subtle);
-}
-
-.status-row:last-child { border-bottom: none; }
-
-.status-source {
-    font-weight: 600 !important;
-    color: var(--text-primary) !important;
-}
-
-.chip-ok {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: var(--success-bg) !important;
-    color: var(--success-text) !important;
-    font-size: 0.74rem !important;
-    font-weight: 700 !important;
-    padding: 3px 10px !important;
-    border-radius: 20px;
-    border: 1px solid var(--success-border) !important;
-}
-
-.chip-empty {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: var(--danger-bg) !important;
-    color: var(--danger-text) !important;
-    font-size: 0.74rem !important;
-    font-weight: 700 !important;
-    padding: 3px 10px !important;
-    border-radius: 20px;
-    border: 1px solid var(--danger-border) !important;
-}
-
-/* ═══════════════════════════════════════════
-   TABS
-   ═══════════════════════════════════════════ */
-[data-testid="stTabs"] { margin-top: 0.4rem; }
-
-[data-testid="stTabs"] [data-testid="stTabsTabList"] {
-    background: var(--surface-2) !important;
-    border-radius: var(--radius-md) !important;
-    padding: 4px !important;
-    border: 1px solid var(--border) !important;
-    display: inline-flex !important;
-    gap: 2px !important;
-}
-
-[data-testid="stTabs"] button[role="tab"] {
-    border-radius: var(--radius-sm) !important;
-    padding: 7px 18px !important;
-    font-size: 0.875rem !important;
-    font-weight: 600 !important;
-    color: var(--text-muted) !important;
-    border: none !important;
-    background: transparent !important;
-}
-
-[data-testid="stTabs"] button[role="tab"]:hover {
-    color: var(--brand-teal) !important;
-    background: rgba(13,148,136,0.07) !important;
-}
-
-[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    background: var(--surface) !important;
-    color: var(--brand-dark) !important;
-    box-shadow: var(--shadow-xs) !important;
-    font-weight: 700 !important;
-}
-
-/* ═══════════════════════════════════════════
-   SIDEBAR – override total dark mode
-   ═══════════════════════════════════════════ */
-[data-testid="stSidebar"],
-[data-testid="stSidebar"] > div,
-[data-testid="stSidebar"] > div > div,
-[data-testid="stSidebar"] section {
-    background-color: var(--surface) !important;
-    color: var(--text-primary) !important;
-}
-
-[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 {
-    font-size: 0.74rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.09em !important;
-    color: var(--text-muted) !important;
-    padding: 12px 0 8px !important;
-    border-bottom: 1px solid var(--border-subtle) !important;
-    margin-bottom: 14px !important;
-}
-
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] p {
-    color: var(--text-body) !important;
-    font-size: 0.84rem !important;
-    font-weight: 600 !important;
-}
-
-[data-testid="stSidebar"] input,
-[data-testid="stSidebar"] textarea {
-    background-color: var(--surface-2) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius-sm) !important;
-}
-
-[data-testid="stSidebar"] input::placeholder {
-    color: var(--text-faint) !important;
-}
-
-[data-testid="stSidebar"] [data-testid="stMultiSelect"] > div > div,
-[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div {
-    background-color: var(--surface-2) !important;
-    border: 1px solid var(--border) !important;
-    color: var(--text-primary) !important;
-    border-radius: var(--radius-sm) !important;
-}
-
-[data-testid="stSidebar"] [data-testid="stMultiSelect"] span[data-baseweb="tag"] {
-    background-color: #dbeafe !important;
-    color: #1e3a8a !important;
-    border: 1px solid #93c5fd !important;
-    border-radius: 6px !important;
-}
-
-[data-testid="stSidebar"] hr {
-    border-color: var(--border) !important;
-    margin: 8px 0 !important;
-}
-
-[data-testid="stSidebar"] {
-    border-right: 1px solid var(--border) !important;
-}
-
-[data-testid="stSidebar"] .stMultiSelect,
-[data-testid="stSidebar"] .stTextInput,
-[data-testid="stSidebar"] .stSelectbox,
-[data-testid="stSidebar"] .stSlider,
-[data-testid="stSidebar"] .stCheckbox {
-    margin-bottom: 16px !important;
-}
-
-/* ═══════════════════════════════════════════
-   CONTAINERS / SPACING
-   ═══════════════════════════════════════════ */
-[data-testid="stHorizontalBlock"] {
-    gap: 16px !important;
-    align-items: stretch;
-}
-
-[data-testid="stVerticalBlockBorderWrapper"] > div > [data-testid="stVerticalBlock"] {
-    padding: 20px 22px !important;
-}
-
-.section-label {
-    font-size: 0.71rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.09em !important;
-    color: var(--text-muted) !important;
-    margin: 0 0 12px;
+.metric-value {
+    font-size: 1.55rem;
+    font-weight: 700;
 }
 
 .widget-help {
-    font-size: 0.83rem !important;
-    color: var(--text-muted) !important;
-    margin-top: 12px;
-}
-
-[data-testid="stDataFrame"] {
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    border: 1px solid var(--border);
-    margin-top: 4px;
-}
-
-/* ═══════════════════════════════════════════
-   DIALOG / MODAL
-   ═══════════════════════════════════════════ */
-[data-testid="stDialog"] {
-    border-radius: 24px !important;
-    overflow: hidden !important;
-    padding: 0 !important;
-    box-shadow: 0 28px 72px rgba(10,20,40,0.24) !important;
-}
-
-[data-testid="stDialog"] > div:first-child {
-    padding: 0 !important;
-}
-
-[data-testid="stDialog"] [data-testid="stVerticalBlock"] {
-    background: var(--surface) !important;
-    color: var(--text-primary) !important;
+    font-size: 0.85rem;
+    color: #334155;
 }
 </style>
 """
@@ -818,9 +473,40 @@ def load_data() -> tuple[pd.DataFrame, dict]:
     return all_df, metadata
 
 
+def _save_layout(layout: list[dict]) -> None:
+    with open(LAYOUT_FILE, "w", encoding="utf-8") as fh:
+        json.dump(layout, fh)
+
+
+def _load_layout() -> list[dict]:
+    if not LAYOUT_FILE.exists():
+        return [
+            {"i": "kpi_products", "x": 0, "y": 0, "w": 3, "h": 2},
+            {"i": "kpi_ean", "x": 3, "y": 0, "w": 3, "h": 2},
+            {"i": "kpi_price", "x": 6, "y": 0, "w": 3, "h": 2},
+            {"i": "kpi_promo", "x": 9, "y": 0, "w": 3, "h": 2},
+            {"i": "kpi_stock", "x": 0, "y": 2, "w": 3, "h": 2},
+            {"i": "kpi_discount", "x": 3, "y": 2, "w": 3, "h": 2},
+            {"i": "kpi_sellers", "x": 6, "y": 2, "w": 3, "h": 2},
+            {"i": "kpi_price_median", "x": 9, "y": 2, "w": 3, "h": 2},
+            {"i": "chart_comp", "x": 0, "y": 4, "w": 6, "h": 4},
+            {"i": "chart_cat", "x": 6, "y": 4, "w": 6, "h": 4},
+            {"i": "chart_price_hist", "x": 0, "y": 8, "w": 6, "h": 4},
+            {"i": "chart_discount_comp", "x": 6, "y": 8, "w": 6, "h": 4},
+        ]
+
+    with open(LAYOUT_FILE, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 def _metric_card(title: str, value: str) -> None:
     st.markdown(
-        f"<div class='kpi-card'><div class='kpi-label'>{title}</div><div class='kpi-value'>{value}</div></div>",
+        f"""
+        <div class='metric-card'>
+            <div class='metric-label'>{title}</div>
+            <div class='metric-value'>{value}</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -884,8 +570,8 @@ def _filter_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _render_dashboard(filtered_df: pd.DataFrame) -> None:
-    st.subheader("Dashboard ejecutivo")
-    st.caption("Vista de performance comercial con módulos configurables y lectura rápida para toma de decisiones.")
+    st.subheader("Dashboard moderno (widgets drag and drop)")
+    st.caption("Arrastra los widgets como en un celular. El layout se guarda automaticamente.")
 
     widget_catalog = {
         "kpi_products": "KPI Total productos",
@@ -906,14 +592,12 @@ def _render_dashboard(filtered_df: pd.DataFrame) -> None:
         st.session_state["active_widgets"] = list(widget_catalog.keys())
 
     active_widgets = st.multiselect(
-        "Módulos visibles",
+        "Widgets activos",
         options=list(widget_catalog.keys()),
         default=st.session_state["active_widgets"],
         format_func=lambda x: widget_catalog[x],
     )
     st.session_state["active_widgets"] = active_widgets
-
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
     total_products = int(filtered_df["product_id"].nunique()) if "product_id" in filtered_df.columns else len(filtered_df)
     ean_cov = 0.0
@@ -989,7 +673,7 @@ def _render_dashboard(filtered_df: pd.DataFrame) -> None:
         title="Distribución de precios",
     )
 
-    discount_comp_df = pd.DataFrame(columns=["competencia", "discount_pct_calc"])
+    discount_comp_df = pd.DataFrame()
     if not discount_series.empty:
         discount_comp_df = filtered_df[["competencia"]].copy()
         discount_comp_df["discount_pct_calc"] = discount_series
@@ -1010,57 +694,81 @@ def _render_dashboard(filtered_df: pd.DataFrame) -> None:
         labels={"discount_pct_calc": "Descuento %"},
     )
 
-    kpi_values = {
-        "kpi_products": ("Total productos", f"{total_products:,}"),
-        "kpi_ean": ("Cobertura EAN", f"{ean_cov:.1f}%"),
-        "kpi_price": ("Precio promedio", f"${avg_price:,.0f}"),
-        "kpi_promo": ("Con cuotas sin interés", f"{promo_cov:.1f}%"),
-        "kpi_stock": ("Cobertura de stock", f"{stock_cov:.1f}%"),
-        "kpi_discount": ("Descuento promedio", f"{avg_discount:.1f}%"),
-        "kpi_sellers": ("Sellers únicos", f"{sellers_count:,}"),
-        "kpi_price_median": ("Precio mediano", f"${median_price:,.0f}"),
-    }
+    if "dash_layout" not in st.session_state:
+        st.session_state["dash_layout"] = _load_layout()
 
-    visible_kpis = [k for k in kpi_values if k in active_widgets]
-    for idx in range(0, len(visible_kpis), 4):
-        cols = st.columns(4, gap="medium")
-        for col, key in zip(cols, visible_kpis[idx:idx + 4]):
-            title, value = kpi_values[key]
-            with col:
-                _metric_card(title, value)
-        st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+    with elements("dashboard_widgets"):
+        with dashboard.Grid(
+            st.session_state["dash_layout"],
+            onLayoutChange=sync("dash_layout"),
+            cols={"lg": 12, "md": 10, "sm": 6, "xs": 4, "xxs": 2},
+            rowHeight=60,
+            draggableHandle=".drag-handle",
+        ):
+            if "kpi_products" in active_widgets:
+                with mui.Paper(key="kpi_products", sx={"p": 2}):
+                    mui.Typography("Total productos", className="drag-handle", sx={"fontWeight": 700})
+                    mui.Typography(f"{total_products:,}", variant="h4")
 
-    fig_comp.update_layout(margin=dict(l=8, r=8, t=44, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-    fig_cat.update_layout(margin=dict(l=8, r=8, t=44, b=8), paper_bgcolor="rgba(0,0,0,0)")
-    fig_price_hist.update_layout(margin=dict(l=8, r=8, t=44, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-    fig_discount_comp.update_layout(margin=dict(l=8, r=8, t=44, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            if "kpi_ean" in active_widgets:
+                with mui.Paper(key="kpi_ean", sx={"p": 2}):
+                    mui.Typography("Cobertura EAN", className="drag-handle", sx={"fontWeight": 700})
+                    mui.Typography(f"{ean_cov:.1f}%", variant="h4")
 
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+            if "kpi_price" in active_widgets:
+                with mui.Paper(key="kpi_price", sx={"p": 2}):
+                    mui.Typography("Precio promedio", className="drag-handle", sx={"fontWeight": 700})
+                    mui.Typography(f"${avg_price:,.0f}", variant="h4")
 
-    c1, c2 = st.columns(2, gap="medium")
-    with c1:
-        if "chart_comp" in active_widgets:
-            with st.container(border=True):
-                st.markdown("<div class='section-label'>Productos por competidor</div>", unsafe_allow_html=True)
-                st.plotly_chart(fig_comp, use_container_width=True, key="chart_comp_plot")
-        if "chart_price_hist" in active_widgets:
-            st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-            with st.container(border=True):
-                st.markdown("<div class='section-label'>Distribución de precios</div>", unsafe_allow_html=True)
-                st.plotly_chart(fig_price_hist, use_container_width=True, key="chart_price_hist_plot")
+            if "kpi_promo" in active_widgets:
+                with mui.Paper(key="kpi_promo", sx={"p": 2}):
+                    mui.Typography("Con cuotas sin interes", className="drag-handle", sx={"fontWeight": 700})
+                    mui.Typography(f"{promo_cov:.1f}%", variant="h4")
 
-    with c2:
-        if "chart_cat" in active_widgets:
-            with st.container(border=True):
-                st.markdown("<div class='section-label'>Mix por categoría</div>", unsafe_allow_html=True)
-                st.plotly_chart(fig_cat, use_container_width=True, key="chart_cat_plot")
-        if "chart_discount_comp" in active_widgets:
-            st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-            with st.container(border=True):
-                st.markdown("<div class='section-label'>Descuento por competidor</div>", unsafe_allow_html=True)
-                st.plotly_chart(fig_discount_comp, use_container_width=True, key="chart_discount_comp_plot")
+            if "kpi_stock" in active_widgets:
+                with mui.Paper(key="kpi_stock", sx={"p": 2}):
+                    mui.Typography("Cobertura de stock", className="drag-handle", sx={"fontWeight": 700})
+                    mui.Typography(f"{stock_cov:.1f}%", variant="h4")
 
-    st.markdown("<div class='widget-help'>Filtrá desde el panel izquierdo y el dashboard se recalcula en vivo.</div>", unsafe_allow_html=True)
+            if "kpi_discount" in active_widgets:
+                with mui.Paper(key="kpi_discount", sx={"p": 2}):
+                    mui.Typography("Descuento promedio", className="drag-handle", sx={"fontWeight": 700})
+                    mui.Typography(f"{avg_discount:.1f}%", variant="h4")
+
+            if "kpi_sellers" in active_widgets:
+                with mui.Paper(key="kpi_sellers", sx={"p": 2}):
+                    mui.Typography("Sellers únicos", className="drag-handle", sx={"fontWeight": 700})
+                    mui.Typography(f"{sellers_count:,}", variant="h4")
+
+            if "kpi_price_median" in active_widgets:
+                with mui.Paper(key="kpi_price_median", sx={"p": 2}):
+                    mui.Typography("Precio mediano", className="drag-handle", sx={"fontWeight": 700})
+                    mui.Typography(f"${median_price:,.0f}", variant="h4")
+
+            if "chart_comp" in active_widgets:
+                with mui.Paper(key="chart_comp", sx={"p": 1}):
+                    mui.Typography("Productos por competidor", className="drag-handle", sx={"fontWeight": 700})
+                    st.plotly_chart(fig_comp, use_container_width=True, key="chart_comp_plot")
+
+            if "chart_cat" in active_widgets:
+                with mui.Paper(key="chart_cat", sx={"p": 1}):
+                    mui.Typography("Mix por categoria", className="drag-handle", sx={"fontWeight": 700})
+                    st.plotly_chart(fig_cat, use_container_width=True, key="chart_cat_plot")
+
+            if "chart_price_hist" in active_widgets:
+                with mui.Paper(key="chart_price_hist", sx={"p": 1}):
+                    mui.Typography("Distribución de precios", className="drag-handle", sx={"fontWeight": 700})
+                    st.plotly_chart(fig_price_hist, use_container_width=True, key="chart_price_hist_plot")
+
+            if "chart_discount_comp" in active_widgets:
+                with mui.Paper(key="chart_discount_comp", sx={"p": 1}):
+                    mui.Typography("Descuento por competidor", className="drag-handle", sx={"fontWeight": 700})
+                    st.plotly_chart(fig_discount_comp, use_container_width=True, key="chart_discount_comp_plot")
+
+    if st.session_state.get("dash_layout"):
+        _save_layout(st.session_state["dash_layout"])
+
+    st.markdown("<div class='widget-help'>Tip: tambien puedes filtrar arriba y el dashboard se recalcula en vivo.</div>", unsafe_allow_html=True)
 
 
 def _render_table_and_exports(filtered_df: pd.DataFrame) -> None:
@@ -1590,154 +1298,40 @@ def _render_intelligence_tab(filtered_df: pd.DataFrame) -> None:
                 )
 
 
-@st.dialog(" ", width="large")
-def _render_demo_dialog() -> None:
-    st.markdown(
-        """
-        <style>
-        /* Overrides scoped al modal para que el texto blanco no sea pisado */
-        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] p,
-        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] div,
-        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] span {
-            color: inherit !important;
-        }
-        </style>
-
-        <div style="font-family:'Inter',sans-serif; overflow:hidden; margin:-1.2rem -1.2rem 0;">
-
-          <!-- HERO OSCURO -->
-          <div style="
-            background: linear-gradient(140deg, #071524 0%, #0f2d4a 50%, #093d38 100%);
-            padding: 36px 40px 32px;
-            position: relative;
-            overflow: hidden;
-          ">
-            <!-- Glow de fondo -->
-            <div style="position:absolute;top:-80px;right:-80px;width:280px;height:280px;
-              background:radial-gradient(circle,rgba(20,184,166,0.22) 0%,transparent 65%);
-              border-radius:50%;"></div>
-            <div style="position:absolute;bottom:-40px;left:-40px;width:200px;height:200px;
-              background:radial-gradient(circle,rgba(99,102,241,0.14) 0%,transparent 65%);
-              border-radius:50%;"></div>
-
-            <!-- Badge -->
-            <div style="
-              display:inline-flex;align-items:center;gap:7px;
-              background:rgba(20,184,166,0.15);
-              border:1px solid rgba(20,184,166,0.35);
-              border-radius:30px;
-              padding:4px 14px 4px 10px;
-              margin-bottom:22px;
-            ">
-              <span style="width:6px;height:6px;border-radius:50%;background:#5eead4;display:inline-block;"></span>
-              <span style="font-size:0.72rem;font-weight:700;color:#99f6e4;letter-spacing:0.1em;text-transform:uppercase;">Demo · by Fedini</span>
-            </div>
-
-            <!-- Título -->
-            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:2rem;font-weight:800;
-              color:#f8fafc;letter-spacing:-0.03em;line-height:1.15;margin-bottom:10px;">
-              Centro de Inteligencia<br>de Precios
-            </div>
-            <div style="font-size:0.93rem;color:rgba(248,250,252,0.6);line-height:1.65;max-width:460px;">
-              Monitoreo competitivo en tiempo real para tomar mejores decisiones comerciales.
-            </div>
-
-            <!-- Stats -->
-            <div style="margin-top:28px;display:flex;gap:0;">
-              <div style="text-align:center;padding:0 28px 0 0;">
-                <div style="font-size:1.6rem;font-weight:800;color:#5eead4;line-height:1;">3</div>
-                <div style="font-size:0.68rem;color:rgba(248,250,252,0.45);text-transform:uppercase;
-                  letter-spacing:0.09em;margin-top:4px;">Retailers</div>
-              </div>
-              <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 28px 0 0;"></div>
-              <div style="text-align:center;padding:0 28px 0 0;">
-                <div style="font-size:1.6rem;font-weight:800;color:#5eead4;line-height:1;">100%</div>
-                <div style="font-size:0.68rem;color:rgba(248,250,252,0.45);text-transform:uppercase;
-                  letter-spacing:0.09em;margin-top:4px;">Personalizable</div>
-              </div>
-              <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 28px 0 0;"></div>
-              <div style="text-align:center;">
-                <div style="font-size:1.6rem;font-weight:800;color:#5eead4;line-height:1;">Auto</div>
-                <div style="font-size:0.68rem;color:rgba(248,250,252,0.45);text-transform:uppercase;
-                  letter-spacing:0.09em;margin-top:4px;">Actualización</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- CUERPO CLARO -->
-          <div style="background:#ffffff;padding:28px 40px 24px;">
-            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
-              color:#94a3b8;margin-bottom:16px;">Cada implementación se adapta a tu marca</div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-
-              <div style="display:flex;gap:12px;align-items:flex-start;background:#f8fafc;
-                border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
-                <span style="font-size:20px;line-height:1;flex-shrink:0;">🎨</span>
-                <div>
-                  <div style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:3px;">Identidad visual</div>
-                  <div style="font-size:0.77rem;color:#64748b;line-height:1.45;">Colores, tipografías y paleta corporativa</div>
-                </div>
-              </div>
-
-              <div style="display:flex;gap:12px;align-items:flex-start;background:#f8fafc;
-                border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
-                <span style="font-size:20px;line-height:1;flex-shrink:0;">📊</span>
-                <div>
-                  <div style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:3px;">KPIs a medida</div>
-                  <div style="font-size:0.77rem;color:#64748b;line-height:1.45;">Métricas y vistas ejecutivas del negocio</div>
-                </div>
-              </div>
-
-              <div style="display:flex;gap:12px;align-items:flex-start;background:#f8fafc;
-                border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
-                <span style="font-size:20px;line-height:1;flex-shrink:0;">🔗</span>
-                <div>
-                  <div style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:3px;">Integraciones</div>
-                  <div style="font-size:0.77rem;color:#64748b;line-height:1.45;">ERP, BI, CRM o fuentes de datos internas</div>
-                </div>
-              </div>
-
-              <div style="display:flex;gap:12px;align-items:flex-start;background:#f8fafc;
-                border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
-                <span style="font-size:20px;line-height:1;flex-shrink:0;">👥</span>
-                <div>
-                  <div style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:3px;">Roles y permisos</div>
-                  <div style="font-size:0.77rem;color:#64748b;line-height:1.45;">Flujos operativos por rol de usuario</div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
-    left, right = st.columns([1, 1])
-    with left:
-        st.link_button(
-            "→  Ver más en fedini.app",
-            "https://fedini.app",
-            use_container_width=True,
-        )
-    with right:
-        if st.button("Explorar el demo  →", use_container_width=True, type="primary"):
-            st.session_state["demo_modal_open"] = False
-            st.session_state["demo_modal_seen"] = True
-            st.rerun()
-
-
 def _show_demo_modal() -> None:
-    if "demo_modal_open" not in st.session_state:
-        st.session_state["demo_modal_open"] = True
-    if "demo_modal_seen" not in st.session_state:
-        st.session_state["demo_modal_seen"] = False
+    """Muestra modal de bienvenida indicando que es un demo personalizable."""
+    if "demo_modal_shown" not in st.session_state:
+        st.session_state.demo_modal_shown = False
 
-    if st.session_state["demo_modal_open"] and not st.session_state["demo_modal_seen"]:
-        _render_demo_dialog()
+    if not st.session_state.demo_modal_shown:
+        with st.container(border=True):
+            col1, col2 = st.columns([0.9, 0.1])
+            
+            with col1:
+                st.markdown("""
+                ### 🎨 Demo by **Fedini**
+                
+                Este es un **demo completamente personalizable** del Centro de Inteligencia de Precios.
+                
+                **Todo puede ser adaptado:**
+                - 🎨 Colores y temas visuales
+                - 📊 Métricas y KPIs
+                - 📝 Textos e idiomas
+                - 🔧 Integraciones y fuentes de datos
+                - 📱 Layout y diseño de la interfaz
+                
+                Contáctanos para conocer cómo podemos adaptarlo a las necesidades específicas de tu marca.
+                """)
+                
+                st.markdown(
+                    "**[→ Visita fedini.app](https://fedini.app)**",
+                    unsafe_allow_html=True
+                )
+            
+            with col2:
+                if st.button("✕", key="close_demo_modal", help="Cerrar"):
+                    st.session_state.demo_modal_shown = True
+                    st.rerun()
 
 
 def main() -> None:
@@ -1745,46 +1339,29 @@ def main() -> None:
     
     _show_demo_modal()
 
-    st.markdown(
-        f"""
-        <div class='app-header'>
-            <div class='app-logo'>📊</div>
-            <div>
-                <div class='app-title'>Centro de Inteligencia de Precios</div>
-                <div class='app-subtitle'>Monitoreo y comparativa competitiva · OnCity · Fravega · Cetrogar</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.title("Centro de Inteligencia de Precios")
+    st.caption("Panel visual para OnCity, Fravega y Cetrogar con filtros, indicadores, reportes y horarios automáticos")
 
     all_df, metadata = load_data()
 
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-
-    left, right, refresh_col = st.columns([2, 3, 1], gap="medium")
+    left, right, refresh_col = st.columns([2, 3, 1])
     with left:
-        _metric_card("Última actualización", metadata["updated_at"])
+        _metric_card("Actualizado", metadata["updated_at"])
     with right:
         def _src_status(fname: str) -> str:
-            if fname != "No encontrado":
-                return "<span class='chip-ok'>● Activo</span>"
-            return "<span class='chip-empty'>● Sin datos</span>"
+            return f"✅ {fname}" if fname != "No encontrado" else "⚠️ Sin datos aún"
 
         st.markdown(
             f"""
-            <div class='status-panel'>
-                <div class='status-title'>Estado de fuentes de datos</div>
-                <div class='status-row'><span class='status-source'>OnCity</span><span>{_src_status(metadata['oncity_file'])}</span></div>
-                <div class='status-row'><span class='status-source'>Fravega</span><span>{_src_status(metadata['fravega_file'])}</span></div>
-                <div class='status-row'><span class='status-source'>Cetrogar</span><span>{_src_status(metadata['cetrogar_file'])}</span></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+            **Última actualización de datos**  
+            OnCity: {_src_status(metadata['oncity_file'])}  
+            Fravega: {_src_status(metadata['fravega_file'])}  
+            Cetrogar: {_src_status(metadata['cetrogar_file'])}
+            """
         )
     with refresh_col:
-        st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
-        if st.button("↻  Actualizar datos", use_container_width=True, help="Fuerza la recarga de los archivos más recientes"):
+        st.markdown("&nbsp;", unsafe_allow_html=True)
+        if st.button("🔄 Actualizar datos", use_container_width=True, help="Fuerza la recarga de los archivos más recientes"):
             st.cache_data.clear()
             st.rerun()
 
@@ -1794,8 +1371,6 @@ def main() -> None:
         return
 
     filtered_df = _filter_data(all_df)
-
-    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Panel", "Productos", "Comparativa", "Top", "Horarios", "Inteligencia"])
 
@@ -1817,27 +1392,10 @@ def main() -> None:
     with tab6:
         _render_intelligence_tab(filtered_df)
 
-    st.markdown(
-        """
-        <div style='
-            margin-top: 40px;
-            padding: 16px 22px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-        '>
-            <span style='font-size:1.1rem;margin-top:1px;'>💡</span>
-            <div style='font-size:0.83rem;color:#475569;line-height:1.6;'>
-                <strong style='color:#0f172a;'>Nota sobre stock y ventas:</strong>
-                actualmente los sitios públicos exponen disponibilidad, pero no ventas por período.
-                Si contás con una API privada o ERP, se puede integrar esta capa sin cambiar la UX.
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.markdown("---")
+    st.caption(
+        "Nota stock/ventas: actualmente los sitios públicos exponen disponibilidad, pero no ventas por período de forma abierta. "
+        "Si luego tienes API privada/ERP, se puede integrar esta capa sin cambiar la UX."
     )
 
 
