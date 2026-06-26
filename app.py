@@ -1224,61 +1224,182 @@ def _render_cron_manager() -> None:
 
 
 def _render_intelligence_tab(filtered_df: pd.DataFrame) -> None:
-    st.subheader("Inteligencia avanzada")
-    st.caption("Alertas de brecha, score por marca, historial de precios y reportes ejecutivos automáticos.")
-
-    c1, c2 = st.columns([1, 3])
-    with c1:
-        threshold = st.number_input("Umbral alerta (%)", min_value=1.0, max_value=500.0, value=25.0, step=1.0)
-        if st.button("Procesar snapshot ahora", use_container_width=True):
-            info = process_post_run(BASE_DIR, datetime.now().isoformat(timespec="seconds"), alert_threshold_pct=threshold)
-            st.success(
-                f"Snapshot generado. Filas: {info.get('snapshots', 0)} | Alertas: {info.get('alerts', 0)} | Reporte: {info.get('report', '-')}."
-            )
-            st.rerun()
-    with c2:
-        st.info("Sugerencia de valor real: activar alertas por brecha para categorías clave y revisar el ranking de marcas ganadoras diariamente.")
-
-    st.markdown("### Alertas de brecha")
-    alerts_df = get_alerts(300)
-    if alerts_df.empty:
-        st.info("Aún no hay alertas guardadas.")
-    else:
-        show_alerts = _rename_cols(alerts_df)
-        st.dataframe(_style_price_table(show_alerts), use_container_width=True, height=320)
-
-    st.markdown("### Score de competitividad por marca")
-    brand_df = get_brand_scores(400)
-    if brand_df.empty:
-        st.info("Aún no hay score de marca. Ejecuta al menos una corrida completa.")
-    else:
-        brand_plot = brand_df.copy()
-        brand_plot = brand_plot.rename(columns={"competencia": "empresa", "wins": "victorias", "brand": "marca"})
-        fig_brand = px.bar(
-            brand_plot.head(40),
-            x="victorias",
-            y="marca",
-            color="empresa",
-            orientation="h",
-            title="Top marcas por empresa ganadora",
-            height=620,
-        )
-        st.plotly_chart(fig_brand, use_container_width=True)
-        st.dataframe(_rename_cols(brand_df), use_container_width=True, height=280)
-
-    st.markdown("### Historial de precios por EAN")
-    ean_options = (
-        filtered_df["ean"].astype(str).str.strip().replace("", pd.NA).dropna().drop_duplicates().head(500).tolist()
-        if "ean" in filtered_df.columns
-        else []
+    st.subheader("Inteligencia de precios")
+    st.caption(
+        "Análisis derivado de los datos cargados: brechas entre competidores, marcas más competitivas, "
+        "evolución de precios y alertas automáticas. Los valores se calculan en tiempo real sobre los archivos más recientes."
     )
-    if not ean_options:
-        st.info("No hay EAN en el dataset filtrado para mostrar historial.")
+
+    # ── 1. Brechas actuales ──────────────────────────────────────────────────
+    st.markdown("### 📊 Productos con mayor brecha de precio entre competidores")
+    st.caption(
+        "Productos que tienen precio en al menos 2 empresas. La **brecha %** es la diferencia porcentual "
+        "entre el precio más caro y el más barato para el mismo EAN. "
+        "Una brecha alta indica una oportunidad de posicionamiento competitivo."
+    )
+
+    if "ean" not in filtered_df.columns or filtered_df.empty:
+        st.info("No hay datos disponibles con el filtro actual.")
     else:
-        selected_ean = st.selectbox("Seleccioná EAN", ean_options)
+        df_ean = filtered_df[filtered_df["ean"].str.strip() != ""].copy()
+        df_ean["price"] = pd.to_numeric(df_ean["price"], errors="coerce")
+        df_ean = df_ean[df_ean["price"].notna()]
+
+        if df_ean.empty:
+            st.info("No hay productos con EAN y precio en el filtro actual.")
+        else:
+            prices = df_ean.groupby(["ean", "competencia"], as_index=False)["price"].min()
+            pivot = prices.pivot(index="ean", columns="competencia", values="price").reset_index()
+
+            meta = (
+                df_ean.sort_values(["ean", "product_name"])
+                .groupby("ean", as_index=False)
+                .agg(
+                    product_name=("product_name", "first"),
+                    brand=("brand", "first"),
+                    category=("category", "first"),
+                )
+            )
+            comp = meta.merge(pivot, on="ean", how="left")
+            company_cols = [c for c in ["oncity", "fravega", "cetrogar"] if c in comp.columns]
+
+            if company_cols:
+                comp["empresas_con_precio"] = comp[company_cols].notna().sum(axis=1)
+                comp = comp[comp["empresas_con_precio"] >= 2].copy()
+
+            if comp.empty or not company_cols:
+                st.info("No hay productos con precio en 2 o más empresas para comparar.")
+            else:
+                comp["precio_min"] = comp[company_cols].min(axis=1)
+                comp["precio_max"] = comp[company_cols].max(axis=1)
+                comp["brecha_pct"] = ((comp["precio_max"] / comp["precio_min"]) - 1) * 100
+                comp["empresa_mas_barata"] = comp[company_cols].idxmin(axis=1)
+                comp["empresa_mas_cara"] = comp[company_cols].idxmax(axis=1)
+                comp = comp.sort_values("brecha_pct", ascending=False)
+
+                # KPIs de brecha
+                k1, k2, k3, k4 = st.columns(4)
+                k1.metric("Productos comparables", f"{len(comp):,}", help="Con EAN en ≥2 empresas")
+                k2.metric("Brecha promedio", f"{comp['brecha_pct'].mean():.1f}%", help="Diferencia % precio máx vs mín")
+                k3.metric("Brecha máxima", f"{comp['brecha_pct'].max():.1f}%", help="Producto con mayor diferencia de precio")
+                k4.metric("Con brecha > 25%", f"{(comp['brecha_pct'] > 25).sum():,}", help="Productos donde la diferencia supera 25%")
+
+                threshold = st.slider(
+                    "Mostrar solo productos con brecha mayor a (%)",
+                    min_value=0, max_value=200, value=0, step=5,
+                    help="Filtrá para ver solo los productos más dispares entre empresas"
+                )
+                show_comp = comp[comp["brecha_pct"] >= threshold].copy()
+
+                display_cols = ["product_name", "brand", "category", "empresa_mas_barata", "empresa_mas_cara", "precio_min", "precio_max", "brecha_pct"] + company_cols
+                display_cols = [c for c in display_cols if c in show_comp.columns]
+                label_map = {
+                    "product_name": "Producto", "brand": "Marca", "category": "Categoría",
+                    "empresa_mas_barata": "Más barata", "empresa_mas_cara": "Más cara",
+                    "precio_min": "Precio mín ($)", "precio_max": "Precio máx ($)",
+                    "brecha_pct": "Brecha (%)",
+                    "oncity": "OnCity ($)", "fravega": "Fravega ($)", "cetrogar": "Cetrogar ($)",
+                }
+                show_df = show_comp[display_cols].rename(columns=label_map)
+                st.dataframe(
+                    show_df.style.format({
+                        "Precio mín ($)": "${:,.0f}", "Precio máx ($)": "${:,.0f}",
+                        "Brecha (%)": "{:.1f}%",
+                        **{v: "${:,.0f}" for k, v in label_map.items() if k in ["oncity", "fravega", "cetrogar"]},
+                    }, na_rep="—"),
+                    use_container_width=True,
+                    height=400,
+                )
+
+                st.download_button(
+                    "Descargar brechas (.csv)",
+                    data=show_comp[display_cols].rename(columns=label_map).to_csv(index=False).encode(),
+                    file_name=f"brechas_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv",
+                )
+
+    st.divider()
+
+    # ── 2. Competitividad por marca ──────────────────────────────────────────
+    st.markdown("### 🏆 Marcas más competitivas por empresa")
+    st.caption(
+        "Para cada producto con EAN en 2 o más empresas, se identifica qué empresa tiene el precio más bajo. "
+        "Esta sección muestra cuántas veces cada marca aparece como la más barata en cada empresa. "
+        "**Una marca con muchas 'victorias' en una empresa indica que esa empresa domina ese segmento.**"
+    )
+
+    if "ean" in filtered_df.columns and not filtered_df.empty and 'comp' in dir() and not comp.empty:
+        brand_wins = []
+        for _, row in comp.iterrows():
+            if pd.notna(row.get("empresa_mas_barata")) and str(row.get("brand", "")).strip():
+                brand_wins.append({
+                    "marca": str(row["brand"]).strip(),
+                    "empresa": str(row["empresa_mas_barata"]),
+                })
+
+        if brand_wins:
+            bw_df = pd.DataFrame(brand_wins)
+            bw_agg = bw_df.groupby(["marca", "empresa"]).size().reset_index(name="victorias")
+            bw_agg = bw_agg.sort_values("victorias", ascending=False)
+
+            top_n = st.slider("Top N marcas", min_value=5, max_value=50, value=20, step=5, key="brand_top_n")
+            top_brands = bw_agg.groupby("marca")["victorias"].sum().nlargest(top_n).index
+            bw_plot = bw_agg[bw_agg["marca"].isin(top_brands)]
+
+            fig_brand = px.bar(
+                bw_plot,
+                x="victorias",
+                y="marca",
+                color="empresa",
+                orientation="h",
+                title=f"Top {top_n} marcas con más productos al menor precio",
+                color_discrete_map={"oncity": "#2563eb", "fravega": "#0f766e", "cetrogar": "#dc2626"},
+                labels={"victorias": "Productos al precio más bajo", "marca": "Marca", "empresa": "Empresa"},
+                height=max(400, top_n * 22),
+            )
+            fig_brand.update_layout(yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig_brand, use_container_width=True)
+        else:
+            st.info("No hay marcas con suficiente comparación para mostrar el ranking.")
+    else:
+        st.info("Calculá primero las brechas desplazándote hacia arriba o ajustá los filtros para incluir más empresas.")
+
+    st.divider()
+
+    # ── 3. Historial de precios ──────────────────────────────────────────────
+    st.markdown("### 📈 Evolución de precio por producto (EAN)")
+    st.caption(
+        "Muestra cómo cambió el precio de un producto específico a lo largo del tiempo, en cada empresa. "
+        "Requiere que se hayan ejecutado **al menos 2 corridas** del scraper para tener puntos de comparación. "
+        "Buscá por EAN o nombre de producto."
+    )
+
+    ean_options = []
+    ean_label_map = {}
+    if "ean" in filtered_df.columns:
+        ean_raw = filtered_df[filtered_df["ean"].str.strip() != ""][["ean", "product_name"]].drop_duplicates("ean").head(500)
+        for _, row in ean_raw.iterrows():
+            label = f"{row['ean']}  —  {str(row.get('product_name', ''))[:60]}"
+            ean_options.append(label)
+            ean_label_map[label] = str(row["ean"])
+
+    if not ean_options:
+        st.info("No hay productos con EAN en el filtro actual.")
+    else:
+        selected_label = st.selectbox("Seleccioná producto", ean_options, key="hist_ean_select")
+        selected_ean = ean_label_map.get(selected_label, "")
         hist_df = get_price_history(selected_ean)
+
         if hist_df.empty:
-            st.info("No hay historial guardado todavía para este EAN.")
+            st.info(
+                "No hay historial de precios guardado para este producto. "
+                "El historial se genera automáticamente cuando se ejecutan corridas desde la pestaña **Horarios**, "
+                "o manualmente con el botón de abajo."
+            )
+            if st.button("Generar snapshot ahora (guarda el estado actual para historial futuro)", use_container_width=True):
+                info = process_post_run(BASE_DIR, datetime.now().isoformat(timespec="seconds"))
+                st.success(f"Snapshot guardado: {info.get('snapshots', 0)} productos registrados.")
+                st.rerun()
         else:
             hist_df["run_at"] = pd.to_datetime(hist_df["run_at"], errors="coerce")
             fig_hist = px.line(
@@ -1287,20 +1408,63 @@ def _render_intelligence_tab(filtered_df: pd.DataFrame) -> None:
                 y="price",
                 color="competencia",
                 markers=True,
-                title=f"Evolución de precio — EAN {selected_ean}",
+                color_discrete_map={"oncity": "#2563eb", "fravega": "#0f766e", "cetrogar": "#dc2626"},
+                labels={"run_at": "Fecha de corrida", "price": "Precio ($)", "competencia": "Empresa"},
+                title=f"Evolución de precio — {selected_label[:80]}",
             )
+            fig_hist.update_layout(yaxis_tickprefix="$", yaxis_tickformat=",.0f")
             st.plotly_chart(fig_hist, use_container_width=True)
-            st.dataframe(_rename_cols(hist_df), use_container_width=True, height=220)
 
-    st.markdown("### Reportes ejecutivos generados")
+            hist_show = hist_df[["run_at", "competencia", "price", "product_name"]].copy()
+            hist_show.columns = ["Fecha", "Empresa", "Precio ($)", "Producto"]
+            hist_show["Precio ($)"] = hist_show["Precio ($)"].apply(lambda x: f"${x:,.0f}" if pd.notna(x) else "—")
+            st.dataframe(hist_show, use_container_width=True, height=220)
+
+    st.divider()
+
+    # ── 4. Alertas históricas ────────────────────────────────────────────────
+    st.markdown("### 🔔 Alertas de brecha registradas")
+    st.caption(
+        "Alertas generadas automáticamente en corridas anteriores cuando la brecha de precio entre empresas "
+        "superó el umbral configurado. Sirven para ver qué productos tuvieron disparidades grandes en el pasado "
+        "y monitorear si se mantienen o corrigen."
+    )
+
+    alerts_df = get_alerts(300)
+    if alerts_df.empty:
+        st.info(
+            "Aún no hay alertas registradas. Se generan automáticamente en cada corrida del scraper "
+            "cuando la brecha supera el umbral definido en los horarios automáticos."
+        )
+    else:
+        alerts_df["run_at"] = pd.to_datetime(alerts_df["run_at"], errors="coerce")
+        alerts_show = alerts_df.rename(columns={
+            "run_at": "Fecha", "ean": "EAN", "product_name": "Producto",
+            "category": "Categoría", "best_company": "Más barata",
+            "worst_company": "Más cara", "precio_min": "Precio mín ($)",
+            "precio_max": "Precio máx ($)", "brecha_pct": "Brecha (%)",
+            "threshold_pct": "Umbral (%)",
+        })
+        st.dataframe(
+            alerts_show.style.format({"Precio mín ($)": "${:,.0f}", "Precio máx ($)": "${:,.0f}", "Brecha (%)": "{:.1f}%"}, na_rep="—"),
+            use_container_width=True,
+            height=320,
+        )
+
+    st.divider()
+
+    # ── 5. Reportes descargables ─────────────────────────────────────────────
+    st.markdown("### 📄 Reportes ejecutivos")
+    st.caption("Reportes HTML generados automáticamente al final de cada corrida. Descargalos para compartir.")
+
     report_files = list_reports(20)
     if not report_files:
-        st.info("Todavía no hay reportes ejecutivos guardados.")
+        st.info("Todavía no hay reportes guardados. Se crean automáticamente cuando el scheduler ejecuta una corrida.")
     else:
         for report in report_files:
             with report.open("rb") as fh:
                 st.download_button(
-                    label=f"Descargar {report.name}",
+                    label=f"⬇ {report.name}",
                     data=fh.read(),
                     file_name=report.name,
                     mime="text/html",
