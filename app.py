@@ -105,9 +105,17 @@ html, body {
     max-width: 1440px !important;
 }
 
-p, span, label, div, li,
-[data-testid="stMarkdownContainer"],
-[data-testid="stText"] {
+/* Sólo los contenedores de texto nativos de Streamlit, NO bare div/span
+   para no aplastar colores inline de HTML personalizado */
+[data-testid="stMarkdownContainer"] > p,
+[data-testid="stMarkdownContainer"] > ul,
+[data-testid="stMarkdownContainer"] > ol,
+[data-testid="stText"],
+[data-testid="stCaptionContainer"] {
+    color: var(--text-body) !important;
+}
+
+label {
     color: var(--text-body) !important;
 }
 
@@ -1586,108 +1594,125 @@ def _render_intelligence_tab(filtered_df: pd.DataFrame) -> None:
 def _render_demo_dialog() -> None:
     st.markdown(
         """
-        <div style="
-            background: linear-gradient(150deg, #0a1628 0%, #0f2d4a 55%, #0d4f45 100%);
-            border-radius: 18px 18px 0 0;
+        <style>
+        /* Overrides scoped al modal para que el texto blanco no sea pisado */
+        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] p,
+        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] div,
+        [data-testid="stDialog"] [data-testid="stMarkdownContainer"] span {
+            color: inherit !important;
+        }
+        </style>
+
+        <div style="font-family:'Inter',sans-serif; overflow:hidden; margin:-1.2rem -1.2rem 0;">
+
+          <!-- HERO OSCURO -->
+          <div style="
+            background: linear-gradient(140deg, #071524 0%, #0f2d4a 50%, #093d38 100%);
             padding: 36px 40px 32px;
-            margin: -1.5rem -1.5rem 0;
             position: relative;
             overflow: hidden;
-        ">
+          ">
+            <!-- Glow de fondo -->
+            <div style="position:absolute;top:-80px;right:-80px;width:280px;height:280px;
+              background:radial-gradient(circle,rgba(20,184,166,0.22) 0%,transparent 65%);
+              border-radius:50%;"></div>
+            <div style="position:absolute;bottom:-40px;left:-40px;width:200px;height:200px;
+              background:radial-gradient(circle,rgba(99,102,241,0.14) 0%,transparent 65%);
+              border-radius:50%;"></div>
+
+            <!-- Badge -->
             <div style="
-                position: absolute; top: -60px; right: -60px;
-                width: 220px; height: 220px;
-                background: radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 70%);
-                border-radius: 50%;
-            "></div>
-            <div style="
-                display: inline-flex; align-items: center; gap: 8px;
-                background: rgba(255,255,255,0.08);
-                border: 1px solid rgba(255,255,255,0.14);
-                border-radius: 30px;
-                padding: 4px 14px 4px 8px;
-                margin-bottom: 20px;
+              display:inline-flex;align-items:center;gap:7px;
+              background:rgba(20,184,166,0.15);
+              border:1px solid rgba(20,184,166,0.35);
+              border-radius:30px;
+              padding:4px 14px 4px 10px;
+              margin-bottom:22px;
             ">
-                <span style="font-size:12px;">✦</span>
-                <span style="font-size:0.75rem; font-weight:700; color:rgba(255,255,255,0.85); letter-spacing:0.08em; text-transform:uppercase;">Demo Product</span>
+              <span style="width:6px;height:6px;border-radius:50%;background:#5eead4;display:inline-block;"></span>
+              <span style="font-size:0.72rem;font-weight:700;color:#99f6e4;letter-spacing:0.1em;text-transform:uppercase;">Demo · by Fedini</span>
             </div>
-            <div style="
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                font-size: 1.85rem;
-                font-weight: 800;
-                color: #ffffff;
-                letter-spacing: -0.03em;
-                line-height: 1.15;
-                margin-bottom: 10px;
-            ">Centro de Inteligencia<br>de Precios</div>
-            <div style="
-                font-size: 0.92rem;
-                color: rgba(255,255,255,0.65);
-                line-height: 1.6;
-                max-width: 480px;
-            ">Monitoreo competitivo en tiempo real para tomar mejores decisiones comerciales.</div>
-            <div style="
-                margin-top: 24px;
-                display: flex; gap: 24px; flex-wrap: wrap;
-            ">
-                <div style="text-align:center;">
-                    <div style="font-size:1.4rem;font-weight:800;color:#5eead4;">3</div>
-                    <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">Retailers</div>
-                </div>
-                <div style="width:1px;background:rgba(255,255,255,0.1);align-self:stretch;"></div>
-                <div style="text-align:center;">
-                    <div style="font-size:1.4rem;font-weight:800;color:#5eead4;">100%</div>
-                    <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">Personalizable</div>
-                </div>
-                <div style="width:1px;background:rgba(255,255,255,0.1);align-self:stretch;"></div>
-                <div style="text-align:center;">
-                    <div style="font-size:1.4rem;font-weight:800;color:#5eead4;">Auto</div>
-                    <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">Actualización</div>
-                </div>
+
+            <!-- Título -->
+            <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:2rem;font-weight:800;
+              color:#f8fafc;letter-spacing:-0.03em;line-height:1.15;margin-bottom:10px;">
+              Centro de Inteligencia<br>de Precios
             </div>
-        </div>
-        <div style="padding: 28px 40px 8px;">
-            <div style="
-                font-size: 0.78rem;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-                color: #64748b;
-                margin-bottom: 14px;
-            ">Cada implementación se adapta a tu marca</div>
+            <div style="font-size:0.93rem;color:rgba(248,250,252,0.6);line-height:1.65;max-width:460px;">
+              Monitoreo competitivo en tiempo real para tomar mejores decisiones comerciales.
+            </div>
+
+            <!-- Stats -->
+            <div style="margin-top:28px;display:flex;gap:0;">
+              <div style="text-align:center;padding:0 28px 0 0;">
+                <div style="font-size:1.6rem;font-weight:800;color:#5eead4;line-height:1;">3</div>
+                <div style="font-size:0.68rem;color:rgba(248,250,252,0.45);text-transform:uppercase;
+                  letter-spacing:0.09em;margin-top:4px;">Retailers</div>
+              </div>
+              <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 28px 0 0;"></div>
+              <div style="text-align:center;padding:0 28px 0 0;">
+                <div style="font-size:1.6rem;font-weight:800;color:#5eead4;line-height:1;">100%</div>
+                <div style="font-size:0.68rem;color:rgba(248,250,252,0.45);text-transform:uppercase;
+                  letter-spacing:0.09em;margin-top:4px;">Personalizable</div>
+              </div>
+              <div style="width:1px;background:rgba(255,255,255,0.1);margin:0 28px 0 0;"></div>
+              <div style="text-align:center;">
+                <div style="font-size:1.6rem;font-weight:800;color:#5eead4;line-height:1;">Auto</div>
+                <div style="font-size:0.68rem;color:rgba(248,250,252,0.45);text-transform:uppercase;
+                  letter-spacing:0.09em;margin-top:4px;">Actualización</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CUERPO CLARO -->
+          <div style="background:#ffffff;padding:28px 40px 24px;">
+            <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
+              color:#94a3b8;margin-bottom:16px;">Cada implementación se adapta a tu marca</div>
+
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+
+              <div style="display:flex;gap:12px;align-items:flex-start;background:#f8fafc;
+                border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
+                <span style="font-size:20px;line-height:1;flex-shrink:0;">🎨</span>
+                <div>
+                  <div style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:3px;">Identidad visual</div>
+                  <div style="font-size:0.77rem;color:#64748b;line-height:1.45;">Colores, tipografías y paleta corporativa</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;align-items:flex-start;background:#f8fafc;
+                border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
+                <span style="font-size:20px;line-height:1;flex-shrink:0;">📊</span>
+                <div>
+                  <div style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:3px;">KPIs a medida</div>
+                  <div style="font-size:0.77rem;color:#64748b;line-height:1.45;">Métricas y vistas ejecutivas del negocio</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;align-items:flex-start;background:#f8fafc;
+                border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
+                <span style="font-size:20px;line-height:1;flex-shrink:0;">🔗</span>
+                <div>
+                  <div style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:3px;">Integraciones</div>
+                  <div style="font-size:0.77rem;color:#64748b;line-height:1.45;">ERP, BI, CRM o fuentes de datos internas</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;align-items:flex-start;background:#f8fafc;
+                border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
+                <span style="font-size:20px;line-height:1;flex-shrink:0;">👥</span>
+                <div>
+                  <div style="font-size:0.84rem;font-weight:700;color:#0f172a;margin-bottom:3px;">Roles y permisos</div>
+                  <div style="font-size:0.77rem;color:#64748b;line-height:1.45;">Flujos operativos por rol de usuario</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
         """,
         unsafe_allow_html=True,
     )
-
-    features = [
-        ("🎨", "Identidad visual completa", "Colores, tipografías y paleta corporativa"),
-        ("📊", "KPIs a medida", "Métricas y vistas ejecutivas del negocio"),
-        ("🔗", "Integraciones", "ERP, BI, CRM o fuentes internas"),
-        ("👥", "Roles y permisos", "Flujos operativos por usuario"),
-    ]
-
-    for icon, title, desc in features:
-        st.markdown(
-            f"""
-            <div style="
-                background:#f8fafc;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                padding:12px 14px;
-                display:flex; gap:12px; align-items:flex-start;
-            ">
-                <span style="font-size:18px;line-height:1;margin-top:2px;">{icon}</span>
-                <div>
-                    <div style="font-size:0.83rem;font-weight:700;color:#0f172a;margin-bottom:2px;">{title}</div>
-                    <div style="font-size:0.78rem;color:#64748b;line-height:1.4;">{desc}</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("</div></div>", unsafe_allow_html=True)
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
